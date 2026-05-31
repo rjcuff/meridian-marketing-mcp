@@ -1,10 +1,10 @@
 {
-  "name": "meridian-mcp",
-  "version": "0.1.0",
+  "name": "meridian-marketing",
+  "version": "0.2.1",
   "description": "Marketing intelligence for Claude Desktop — installs and configures official MCP servers",
   "type": "module",
   "bin": {
-    "meridian": "./src/cli.js"
+    "meridian": "src/cli.js"
   },
   "scripts": {
     "setup": "node src/cli.js setup",
