@@ -1,0 +1,22 @@
+{
+  "name": "meridian-mcp",
+  "version": "0.1.0",
+  "description": "Marketing intelligence for Claude Desktop — installs and configures official MCP servers",
+  "type": "module",
+  "bin": {
+    "meridian": "./src/cli.js"
+  },
+  "scripts": {
+    "setup": "node src/cli.js setup",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "inquirer": "^9.2.0",
+    "ora": "^7.0.1",
+    "execa": "^8.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
