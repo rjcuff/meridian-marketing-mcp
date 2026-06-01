@@ -11,7 +11,7 @@ Set PlaybackSpeed 1
 
 # ── Show what it is ──────────────────────────────────────────
 
-Type "node src/cli.js"
+Type "npx meridian-marketing"
 Sleep 300ms
 Enter
 Sleep 3s
@@ -22,12 +22,12 @@ Type "clear"
 Enter
 Sleep 300ms
 
-Type "node src/cli.js setup"
+Type "npx meridian-marketing setup"
 Sleep 400ms
 Enter
-Sleep 1500ms
+Sleep 2000ms
 
-# OS — Mac is first option, press Enter
+# OS — Mac is first option, press Enter to select
 Enter
 Sleep 900ms
 
@@ -35,9 +35,9 @@ Sleep 900ms
 Enter
 Sleep 900ms
 
-# "Have you used MCP before?" — No
+# "Have you used MCP before?" — No (default), press Enter
 Enter
-Sleep 5000ms
+Sleep 6000ms
 
 # ── Check status ─────────────────────────────────────────────
 
@@ -45,21 +45,21 @@ Type "clear"
 Enter
 Sleep 300ms
 
-Type "node src/cli.js status"
+Type "npx meridian-marketing status"
 Sleep 400ms
 Enter
 Sleep 2500ms
 
 # ── Run doctor ───────────────────────────────────────────────
 
-Type "node src/cli.js doctor"
+Type "npx meridian-marketing doctor"
 Sleep 400ms
 Enter
 Sleep 3000ms
 
 # ── Add a new tool ───────────────────────────────────────────
 
-Type "node src/cli.js add notion"
+Type "npx meridian-marketing add notion"
 Sleep 400ms
 Enter
 Sleep 4000ms
