@@ -48,9 +48,15 @@ Claude pulls the actual data. It doesn't guess.
 # First-time install
 npx meridian-marketing setup
 
-# Add a tool you didn't install the first time
+# Add a tool later
 npx meridian-marketing add notion
 npx meridian-marketing add notion slack
+
+# Remove a tool
+npx meridian-marketing remove hubspot
+
+# Refresh config with latest settings (run after updating Meridian)
+npx meridian-marketing update
 
 # See what's installed and whether credentials are set
 npx meridian-marketing status
@@ -58,6 +64,21 @@ npx meridian-marketing status
 # Check for missing credentials with specific fix instructions
 npx meridian-marketing doctor
 npx meridian-marketing doctor ga4
+```
+
+## Team setup
+
+One person sets up, everyone else syncs in one command.
+
+```sh
+# Person 1: after running setup, generate the team config
+npx meridian-marketing init
+
+# Commit meridian.json to your repo — no secrets, just tool names
+git add meridian.json && git commit -m "chore: add Meridian team config"
+
+# Everyone else: clone the repo and run
+npx meridian-marketing sync
 ```
 
 ---

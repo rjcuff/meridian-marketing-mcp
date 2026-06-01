@@ -109,3 +109,63 @@ export function writeConfig(configPath, newServers) {
 
   return { written, skipped, backup };
 }
+
+/**
+ * Force-overwrites mcpServer entries (used by `meridian update`).
+ * Unlike writeConfig, does not skip existing entries.
+ *
+ * @param {string} configPath
+ * @param {object} servers - map of server name → server config object
+ * @returns {{ updated: string[], backup: string|null }}
+ */
+export function updateConfig(configPath, servers) {
+  const backup = backupConfig(configPath);
+  const existing = readConfig(configPath);
+
+  if (!existing.mcpServers) existing.mcpServers = {};
+
+  const updated = [];
+  for (const [name, config] of Object.entries(servers)) {
+    existing.mcpServers[name] = config;
+    updated.push(name);
+  }
+
+  const dir = path.dirname(configPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), 'utf-8');
+
+  return { updated, backup };
+}
+
+/**
+ * Removes mcpServer entries by config key (used by `meridian remove`).
+ * Always backs up first.
+ *
+ * @param {string} configPath
+ * @param {string[]} configKeys - server names to remove from mcpServers
+ * @returns {{ removed: string[], notFound: string[], backup: string|null }}
+ */
+export function removeFromConfig(configPath, configKeys) {
+  const backup = backupConfig(configPath);
+  const existing = readConfig(configPath);
+
+  const removed = [];
+  const notFound = [];
+
+  for (const key of configKeys) {
+    if (existing.mcpServers?.[key]) {
+      delete existing.mcpServers[key];
+      removed.push(key);
+    } else {
+      notFound.push(key);
+    }
+  }
+
+  const dir = path.dirname(configPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), 'utf-8');
+
+  return { removed, notFound, backup };
+}

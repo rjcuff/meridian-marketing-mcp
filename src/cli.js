@@ -27,7 +27,7 @@ import {
   getInstalledToolIds,
   runDoctorChecks,
 } from './installer.js';
-import { getConfigPath, readConfig, writeConfig } from './config-writer.js';
+import { getConfigPath, readConfig, writeConfig, updateConfig, removeFromConfig } from './config-writer.js';
 import { writeSetupStatus, writeClaudeProject } from './status-writer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -461,6 +461,229 @@ async function doctor(toolIds) {
   console.log();
 }
 
+// ─── Remove Command ───────────────────────────────────────────────────────
+
+async function remove(toolIds) {
+  const allIds = getAllToolIds();
+
+  if (toolIds.length === 0) {
+    console.log();
+    console.log(chalk.bold('  Usage: npx meridian-marketing remove <tool>'));
+    console.log(chalk.gray(`  Available: ${allIds.join(', ')}`));
+    console.log();
+    return;
+  }
+
+  const invalid = toolIds.filter((id) => !allIds.includes(id));
+  if (invalid.length > 0) {
+    console.log();
+    console.log(chalk.red(`  Unknown tool(s): ${invalid.join(', ')}`));
+    console.log(chalk.gray(`  Available: ${allIds.join(', ')}`));
+    console.log();
+    process.exit(1);
+  }
+
+  const configPath = getConfigPath(detectOs());
+  const config = readConfig(configPath);
+  const installedIds = new Set(getInstalledToolIds(config));
+
+  const toRemove = toolIds.filter((id) => installedIds.has(id));
+  const notInstalled = toolIds.filter((id) => !installedIds.has(id));
+
+  if (notInstalled.length > 0) {
+    console.log();
+    for (const id of notInstalled) {
+      console.log(chalk.gray(`  ${getLabel(id)} is not installed — skipping`));
+    }
+  }
+
+  if (toRemove.length === 0) {
+    console.log();
+    console.log(chalk.gray('  Nothing to remove.'));
+    console.log();
+    return;
+  }
+
+  console.log();
+  const { confirm } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'confirm',
+      message: `Remove ${toRemove.map(getLabel).join(', ')} from Claude Desktop config?`,
+      default: false,
+    },
+  ]);
+
+  if (!confirm) {
+    console.log(chalk.gray('\n  Cancelled.\n'));
+    return;
+  }
+
+  const configKeys = toRemove.map((id) => INTEGRATIONS[id].configKey);
+  const result = removeFromConfig(configPath, configKeys);
+
+  console.log();
+  for (const id of toRemove) {
+    const key = INTEGRATIONS[id].configKey;
+    if (result.removed.includes(key)) {
+      console.log(`  ${chalk.green('✅')} ${getLabel(id)} removed`);
+    }
+  }
+
+  // Regenerate guides without removed tools
+  try {
+    const updatedConfig = readConfig(configPath);
+    const remaining = getInstalledToolIds(updatedConfig);
+    if (remaining.length > 0) {
+      const prereqs = await checkPrereqs(remaining);
+      const keys = remaining.map((id) => INTEGRATIONS[id].configKey);
+      writeSetupStatus({ tools: remaining, prereqResults: prereqs, configResult: { written: keys, skipped: [] }, configPath });
+      writeClaudeProject({ tools: remaining, configPath });
+    }
+  } catch {
+    // non-fatal
+  }
+
+  console.log();
+  console.log(chalk.gray('  Restart Claude Desktop to apply.'));
+  console.log();
+}
+
+// ─── Update Command ───────────────────────────────────────────────────────
+
+async function update(toolIds) {
+  const configPath = getConfigPath(detectOs());
+  const config = readConfig(configPath);
+  const installedIds = getInstalledToolIds(config);
+
+  if (installedIds.length === 0) {
+    console.log();
+    console.log(chalk.gray('  Nothing installed to update.'));
+    console.log(chalk.gray('  Run: npx meridian-marketing setup'));
+    console.log();
+    return;
+  }
+
+  const toUpdate = toolIds.length > 0
+    ? toolIds.filter((id) => getAllToolIds().includes(id) && installedIds.includes(id))
+    : installedIds;
+
+  if (toUpdate.length === 0) {
+    console.log();
+    console.log(chalk.gray('  None of those tools are installed.'));
+    console.log();
+    return;
+  }
+
+  console.log();
+  console.log(chalk.bold.magenta(`  Updating ${toUpdate.map(getLabel).join(', ')}...`));
+  console.log();
+
+  const spinner = ora('Rewriting config with latest settings...').start();
+  let result;
+  try {
+    const servers = buildConfigs(toUpdate);
+    result = updateConfig(configPath, servers);
+    const backupNote = result.backup ? chalk.gray(' (backup saved)') : '';
+    spinner.succeed(`Config updated${backupNote}`);
+  } catch (err) {
+    spinner.fail(`Update failed: ${err.message}`);
+    process.exit(1);
+  }
+
+  console.log();
+  for (const id of toUpdate) {
+    console.log(`  ${chalk.green('✅')} ${getLabel(id)} — config refreshed`);
+  }
+
+  console.log();
+  console.log(chalk.gray('  Restart Claude Desktop to apply.'));
+  console.log();
+}
+
+// ─── Init Command ─────────────────────────────────────────────────────────
+
+const TEAM_CONFIG_FILE = 'meridian.json';
+
+async function init() {
+  const configPath = getConfigPath(detectOs());
+  const config = readConfig(configPath);
+  const installedIds = getInstalledToolIds(config);
+
+  if (installedIds.length === 0) {
+    console.log();
+    console.log(chalk.gray('  No Meridian tools installed yet.'));
+    console.log(chalk.gray('  Run: npx meridian-marketing setup'));
+    console.log();
+    return;
+  }
+
+  const teamConfig = {
+    version: '1',
+    tools: installedIds,
+    created: new Date().toISOString().slice(0, 10),
+  };
+
+  const outPath = path.join(process.cwd(), TEAM_CONFIG_FILE);
+  fs.writeFileSync(outPath, JSON.stringify(teamConfig, null, 2), 'utf-8');
+
+  console.log();
+  console.log(chalk.bold.magenta('  Team config created'));
+  console.log();
+  console.log(`  ${chalk.green('✅')} ${outPath}`);
+  console.log();
+  console.log('  Tools captured:');
+  for (const id of installedIds) {
+    console.log(`    ${chalk.cyan('•')} ${getLabel(id)}`);
+  }
+  console.log();
+  console.log(chalk.bold('  Share with your team:'));
+  console.log();
+  console.log(chalk.gray('    1. Commit meridian.json to your repo (no secrets — just tool names)'));
+  console.log(chalk.gray('    2. Team members run: npx meridian-marketing sync'));
+  console.log(chalk.gray('    3. Everyone has the same tools configured in Claude Desktop'));
+  console.log();
+}
+
+// ─── Sync Command ─────────────────────────────────────────────────────────
+
+async function sync() {
+  const configFilePath = path.join(process.cwd(), TEAM_CONFIG_FILE);
+
+  if (!fs.existsSync(configFilePath)) {
+    console.log();
+    console.log(chalk.red(`  No ${TEAM_CONFIG_FILE} found in current directory.`));
+    console.log(chalk.gray('  Ask your team for the meridian.json file, or run: npx meridian-marketing init'));
+    console.log();
+    process.exit(1);
+  }
+
+  let teamConfig;
+  try {
+    teamConfig = JSON.parse(fs.readFileSync(configFilePath, 'utf-8'));
+  } catch {
+    console.log(chalk.red(`  ${TEAM_CONFIG_FILE} is not valid JSON.`));
+    console.log();
+    process.exit(1);
+  }
+
+  const toolIds = teamConfig.tools || [];
+  if (toolIds.length === 0) {
+    console.log();
+    console.log(chalk.gray(`  ${TEAM_CONFIG_FILE} has no tools listed.`));
+    console.log();
+    return;
+  }
+
+  console.log();
+  console.log(chalk.bold.magenta('  Syncing team config...'));
+  console.log();
+  console.log(chalk.gray(`  Installing: ${toolIds.map(getLabel).join(', ')}`));
+  console.log();
+
+  await add(toolIds);
+}
+
 // ─── Help ─────────────────────────────────────────────────────────────────
 
 function showHelp() {
@@ -469,18 +692,22 @@ function showHelp() {
   console.log('  Commands:');
   console.log(`    ${chalk.cyan('setup')}              First-time install`);
   console.log(`    ${chalk.cyan('add <tool>')}         Add a tool without re-running setup`);
+  console.log(`    ${chalk.cyan('remove <tool>')}      Remove a tool from Claude Desktop`);
+  console.log(`    ${chalk.cyan('update [tool]')}      Refresh config with latest settings`);
   console.log(`    ${chalk.cyan('status')}             See what\'s installed`);
-  console.log(`    ${chalk.cyan('doctor')}             Check for missing credentials`);
-  console.log(`    ${chalk.cyan('doctor <tool>')}      Check a specific tool`);
+  console.log(`    ${chalk.cyan('doctor [tool]')}      Check for missing credentials`);
+  console.log(`    ${chalk.cyan('init')}               Create meridian.json for team sharing`);
+  console.log(`    ${chalk.cyan('sync')}               Install tools from meridian.json`);
   console.log();
   console.log(`  Available tools: ${chalk.cyan(getAllToolIds().join(', '))}`);
   console.log();
   console.log('  Examples:');
   console.log('    npx meridian-marketing setup');
-  console.log('    npx meridian-marketing add notion');
   console.log('    npx meridian-marketing add notion slack');
-  console.log('    npx meridian-marketing status');
-  console.log('    npx meridian-marketing doctor');
+  console.log('    npx meridian-marketing remove hubspot');
+  console.log('    npx meridian-marketing update');
+  console.log('    npx meridian-marketing init   # then commit meridian.json');
+  console.log('    npx meridian-marketing sync   # team runs this to match your setup');
   console.log();
 }
 
@@ -492,7 +719,11 @@ const handlers = {
   setup: () => setup(),
   status: () => status(),
   add: () => add(process.argv.slice(3)),
+  remove: () => remove(process.argv.slice(3)),
+  update: () => update(process.argv.slice(3)),
   doctor: () => doctor(process.argv.slice(3)),
+  init: () => init(),
+  sync: () => sync(),
 };
 
 const handler = handlers[command];
