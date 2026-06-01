@@ -4,3 +4,7 @@ node_modules/
 *.local
 .DS_Store
 Thumbs.db
+*.log
+npm-debug.log*
+.claude/
+.demo-setup.sh

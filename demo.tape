@@ -2,64 +2,70 @@ Output demo.gif
 
 Set Shell "bash"
 Set FontSize 14
-Set Width 110
-Set Height 38
+Set Width 1200
+Set Height 800
 Set Theme "Dracula"
 Set Padding 20
 Set LoopOffset 50%
 Set PlaybackSpeed 1
 
-# ── Show what it is ──────────────────────────────────────────
+# ── Bootstrap local CLI so there's no npx download delay ─────────────────
+
+Hide
+Type "source /Users/ryancuff/Desktop/mcp/meridian-marketing-mcp/.demo-setup.sh"
+Enter
+Sleep 200ms
+Type "clear"
+Enter
+Sleep 300ms
+Show
+
+# ── Show what it is ───────────────────────────────────────────────────────
 
 Type "npx meridian-marketing"
-Sleep 300ms
 Enter
 Sleep 3s
 
-# ── Run setup ────────────────────────────────────────────────
+# ── Run setup ─────────────────────────────────────────────────────────────
 
 Type "clear"
 Enter
 Sleep 300ms
 
 Type "npx meridian-marketing setup"
-Sleep 400ms
 Enter
-Sleep 2000ms
+Sleep 2s
 
-# OS — Mac is first option, press Enter to select
+# OS — Mac is first option, already highlighted, press Enter to select
 Enter
-Sleep 900ms
+Sleep 700ms
 
-# Tools — GA4 + GSC pre-checked, press Enter to accept
+# Tools — GA4 + GSC are pre-checked, press Enter to accept
 Enter
-Sleep 900ms
+Sleep 700ms
 
-# "Have you used MCP before?" — No (default), press Enter
+# "Have you set up MCP servers before?" — No (default), press Enter
 Enter
-Sleep 6000ms
+Sleep 8s
 
-# ── Check status ─────────────────────────────────────────────
+# ── Check status ──────────────────────────────────────────────────────────
 
 Type "clear"
 Enter
 Sleep 300ms
 
 Type "npx meridian-marketing status"
-Sleep 400ms
 Enter
-Sleep 2500ms
+Sleep 3s
 
-# ── Run doctor ───────────────────────────────────────────────
+# ── Run doctor ────────────────────────────────────────────────────────────
 
 Type "npx meridian-marketing doctor"
-Sleep 400ms
 Enter
-Sleep 3000ms
+Sleep 4s
 
-# ── Add a new tool ───────────────────────────────────────────
+# ── Add a new tool ────────────────────────────────────────────────────────
 
 Type "npx meridian-marketing add notion"
-Sleep 400ms
 Enter
-Sleep 4000ms
+Sleep 5s
