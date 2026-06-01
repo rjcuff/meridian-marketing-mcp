@@ -1,75 +1,133 @@
 # Meridian
 
-Meridian connects Claude Desktop to your marketing data. Run one command, answer three questions, and Claude will have live access to Google Analytics, Google Search Console, and HubSpot. No config files to edit by hand. No reading documentation for four different tools. It just works.
+Connect your marketing tools to Claude Desktop. One command, no config files to edit by hand.
 
-```
+```sh
 npx meridian-marketing setup
 ```
 
-## What this actually does
+Restart Claude Desktop. Done.
 
-Most marketers who want to use Claude with their data hit the same wall. The official MCP servers exist, but setting them up requires editing a JSON config file, installing the right package manager, finding your property ID, setting environment variables, and hoping nothing breaks when you restart Claude Desktop. That is not a reasonable ask for someone who just wants to ask questions about their traffic.
+---
 
-Meridian handles all of that. It asks you which tools you use, checks that the right software is installed on your machine, writes the correct configuration into Claude Desktop's config file without touching anything else, and copies three ready-to-use prompt templates into a folder on your computer.
+## What you can ask Claude after setup
 
-After you restart Claude Desktop, you can open one of those templates and immediately start getting answers from your actual marketing data.
+```
+"What were my top 10 pages this week and why did they perform well?"
 
-## What gets installed
+"Find keywords I rank 4–10 for with more than 500 impressions. What should I write?"
 
-**Google Analytics 4** connects through Google's official MCP server, which runs locally using a tool called `uv`. You will need a Google Cloud service account with Viewer access to your property, and a JSON key file from that account.
+"Compare this week's traffic to last week. Flag anything that dropped more than 20%."
 
-**Google Search Console** connects through a community-built MCP server that runs with Node.js. It uses the same service account credentials as GA4, so if you set up one you are mostly set up for both.
+"Cross-reference my HubSpot contact sources with my GA4 acquisition data."
 
-**HubSpot** connects through HubSpot's official remote MCP endpoint. There is nothing to install locally. The first time Claude tries to connect it will open a browser window and ask you to authorize your HubSpot account.
+"Write a weekly report and post it to #marketing in Slack."
 
-Meridian writes these into `claude_desktop_config.json` as a merge, not an overwrite. Anything you already have configured stays exactly as it is.
+"What content should I publish next based on what's working in Search Console?"
+```
+
+Claude pulls the actual data. It doesn't guess.
+
+---
+
+## Tools
+
+| Tool | What it unlocks |
+|------|----------------|
+| **Google Analytics 4** | Traffic, sessions, conversions, top pages, user behavior |
+| **Google Search Console** | Rankings, clicks, impressions, keyword gaps |
+| **HubSpot** | Deals, contacts, email performance, pipeline |
+| **Notion** | Read and update your content calendar, campaign briefs |
+| **Slack** | Post reports to channels, read message history |
+
+---
+
+## Commands
+
+```sh
+# First-time install
+npx meridian-marketing setup
+
+# Add a tool you didn't install the first time
+npx meridian-marketing add notion
+npx meridian-marketing add notion slack
+
+# See what's installed and whether credentials are set
+npx meridian-marketing status
+
+# Check for missing credentials with specific fix instructions
+npx meridian-marketing doctor
+npx meridian-marketing doctor ga4
+```
+
+---
 
 ## Prompt templates
 
-After setup you will find three files in a `meridian-prompts` folder in your home directory. These are plain markdown files you can paste directly into Claude.
+After setup, five templates land in `~/meridian-prompts/`:
 
-**weekly-review.md** pulls together your GA4 traffic numbers, top search queries from Search Console, and any HubSpot deals that moved this week, and asks Claude to write it up as a report. Intended to run every Monday morning and take about thirty seconds.
+| File | What it does |
+|------|-------------|
+| `weekly-review.md` | GA4 + Search Console + HubSpot weekly summary |
+| `campaign-audit.md` | Cross-reference traffic with leads and deal sources |
+| `seo-gap.md` | Find keywords ranking 5–20 and get content suggestions |
+| `content-calendar.md` | Plan 4–6 weeks of content from what's performing |
+| `channel-report.md` | Multi-channel weekly report, posts to Slack when done |
 
-**campaign-audit.md** cross-references traffic by channel from GA4 with your top pages in Search Console and your contact source data from HubSpot. It is designed to answer the question of whether the traffic you are getting is actually turning into leads, and where the gaps are.
+Drag any template into Claude Desktop and press Enter.
 
-**seo-gap.md** finds search queries where your pages are showing up in Google but people are not clicking. It pulls out anything ranking between position 5 and 20, which are the keywords closest to page one, and asks Claude to suggest five specific pieces of content to write based on what it finds.
+---
 
-## Prerequisites
+## Finish setup
 
-For GA4 and Search Console you need to do a one-time Google Cloud setup. Create a service account, give it Viewer access to your GA4 property and your Search Console site, download the JSON key file, and then set three environment variables in your shell profile.
+Some tools need API credentials after install. Run:
 
+```sh
+npx meridian-marketing doctor
 ```
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/key.json
-GA4_PROPERTY_ID=123456789
-GSC_SITE_URL=https://yourdomain.com
-```
 
-For HubSpot there is nothing to configure in advance. Just make sure you have a HubSpot account and can log in to it from your browser.
+Or drag `~/meridian-prompts/SETUP-STATUS.md` into Claude Desktop and say:
+
+> "Help me finish setting up Meridian."
+
+Claude will walk you through each credential step by step.
+
+---
+
+## Claude Project setup
+
+After setup, `~/meridian-prompts/CLAUDE-PROJECT.md` contains a ready-to-use system prompt. Paste it into a Claude Project's instructions and Claude will know your full marketing stack in every conversation.
+
+---
 
 ## Adding a new integration
 
-The project is designed to be extended. Each marketing tool is a self-contained entry in `src/installer.js`. To add support for a new tool, add an object to the `INTEGRATIONS` registry with a label, a config key, the prerequisites it needs, the MCP config to write, and a list of setup instructions to show after install. Then add the tool as a checkbox option in `src/cli.js`. Nothing else needs to change.
+Each tool is a self-contained entry in `src/installer.js`. To add a new tool:
 
-```js
-klaviyo: {
-  label: 'Klaviyo',
-  configKey: 'klaviyo',
-  prereq: {
-    command: 'uvx',
-    what: 'uv (Python package manager)',
-    installUrl: 'https://docs.astral.sh/uv/getting-started/installation/',
-  },
-  mcpConfig: () => ({
-    command: 'uvx',
-    args: ['mcp-server-klaviyo'],
-    env: { KLAVIYO_API_KEY: process.env.KLAVIYO_API_KEY || '' },
-  }),
-  nextSteps: [
-    'Set KLAVIYO_API_KEY to your private API key from the Klaviyo account settings.',
-  ],
-},
-```
+1. Add an object to `INTEGRATIONS` with this shape:
+   ```js
+   mytool: {
+     label: 'My Tool',
+     configKey: 'my-tool',
+     category: 'analytics',
+     prereq: { command: 'npx', what: 'Node.js / npx', installUrl: 'https://nodejs.org' },
+     mcpConfig: () => ({
+       command: 'npx',
+       args: ['-y', 'mcp-server-mytool'],
+       env: { MY_TOOL_API_KEY: process.env.MY_TOOL_API_KEY || '' },
+     }),
+     requiredEnvVars: [
+       { key: 'MY_TOOL_API_KEY', description: 'API key from My Tool settings' },
+     ],
+     nextSteps: ['Get your API key from mytool.com/settings', 'Set: MY_TOOL_API_KEY=xxxxxxxx'],
+   }
+   ```
+2. Add it as a checkbox option in `src/cli.js`.
+
+Nothing else needs to change — status, doctor, add, and the setup guides pick it up automatically.
+
+---
 
 ## License
 
-MIT. See the LICENSE file for details.
+MIT

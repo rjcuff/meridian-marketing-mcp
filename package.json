@@ -1,6 +1,6 @@
 {
   "name": "meridian-marketing",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Marketing intelligence for Claude Desktop — installs and configures official MCP servers",
   "type": "module",
   "bin": {
