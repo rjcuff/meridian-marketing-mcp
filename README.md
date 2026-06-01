@@ -2,6 +2,8 @@
 
 Connect your marketing tools to Claude Desktop. One command, no config files to edit by hand.
 
+![Meridian demo](demo.gif)
+
 ```sh
 npx meridian-marketing setup
 ```

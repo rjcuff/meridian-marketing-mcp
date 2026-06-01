@@ -3,3 +3,7 @@ node_modules/
 .env
 *.local
 .DS_Store
+demo.tape
+demo.gif
+*.gif
+*.mp4
